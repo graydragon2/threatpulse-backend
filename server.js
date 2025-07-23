@@ -4,7 +4,6 @@ import Parser from 'rss-parser';
 
 const app = express();
 const parser = new Parser();
-
 const PORT = process.env.PORT || 3000;
 
 app.use(cors());
