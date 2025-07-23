@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import Parser from 'rss-parser';
 import morgan from 'morgan'; // ✅ Optional logging
+import { fetchAndFilterFeeds } from './rssService.js';
 
 const app = express();
 const parser = new Parser();
