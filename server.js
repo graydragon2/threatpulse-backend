@@ -1,11 +1,10 @@
-const express = require('express');
-const cors = require('cors');
-const Parser = require('rss-parser');
+import express from 'express';
+import cors from 'cors';
+import Parser from 'rss-parser';
 
 const app = express();
 const parser = new Parser();
 
-// ✅ Use Railway-assigned port if available
 const PORT = process.env.PORT || 3000;
 
 app.use(cors());
@@ -28,9 +27,7 @@ app.get('/rss', async (req, res) => {
           item.title?.toLowerCase().includes(keyword.toLowerCase()) ||
           item.content?.toLowerCase().includes(keyword.toLowerCase())
         );
-        if (match) {
-          results.push(item);
-        }
+        if (match) results.push(item);
       });
     }
 
@@ -44,3 +41,4 @@ app.get('/rss', async (req, res) => {
 app.listen(PORT, () => {
   console.log(`ThreatPulse RSS API running on port ${PORT}`);
 });
+
