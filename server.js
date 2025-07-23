@@ -33,10 +33,15 @@ app.get('/rss', async (req, res) => {
     }
   }
 
-  if (results.length === 0) {
-    return res.status(500).json({ success: false, message: 'No data returned from feeds' });
-  }
-
-  res.json({ success: true, items: results.slice(0, 20) });
+  res.json({ success: true, items: results });
 });
 
+// Log uncaught promise rejections to debug Railway crashes
+process.on('unhandledRejection', err => {
+  console.error('Unhandled rejection:', err);
+});
+
+// Start the server using Railway-assigned port
+app.listen(PORT, () => {
+  console.log(`✅ ThreatPulse RSS API running on port ${PORT}`);
+});
