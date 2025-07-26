@@ -16,7 +16,7 @@ app.get('/', (req, res) => {
   res.send('🟢 ThreatPulse API is live');
 });
 
-app.get('/rss', async (req, res) => {
+app.get('/api/rss', async (req, res) => {
   const keywords = req.query.keywords ? req.query.keywords.split(',') : [];
   const page = parseInt(req.query.page) || 1;           // ✅ Part 2: Pagination
   const limit = parseInt(req.query.limit) || 20;
