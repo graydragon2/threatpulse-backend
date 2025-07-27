@@ -9,28 +9,38 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(morgan('dev'));
 
-// Health Check
+// ✅ Health Check
 app.get('/', (req, res) => {
   res.send('🟢 ThreatPulse API is live');
 });
 
-// RSS Feed Endpoint with optional keywords
+// ✅ RSS Feed Endpoint (now calling utility logic)
 app.get('/rss', async (req, res) => {
   const keywords = req.query.keywords ? req.query.keywords.split(',') : [];
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 20;
 
   try {
     const items = await parseRSS(keywords.map(k => k.toLowerCase()));
+    const start = (page - 1) * limit;
+    const end = start + limit;
+
     res.json({
       success: true,
-      items,
-      page: 1,
-      limit: 20,
+      items: items.slice(start, end),
+      page,
+      limit,
       total: items.length
     });
   } catch (err) {
     console.error('RSS Fetch Error:', err);
     res.status(500).json({ success: false, message: 'Failed to fetch RSS feed' });
   }
+});
+
+// ✅ Start Server
+app.listen(PORT, () => {
+  console.log(`🚀 ThreatPulse API running on port ${PORT}`);
 });
 
 app.listen(PORT, () => {
