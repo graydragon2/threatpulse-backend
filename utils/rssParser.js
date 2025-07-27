@@ -1,38 +1,29 @@
-// utils/rssParser.js
 import Parser from 'rss-parser';
-const parser = new Parser();
 
+const parser = new Parser();
 const FEEDS = [
-  'https://rss.cnn.com/rss/edition.rss',
+  'https://www.cisa.gov/news.xml',
   'https://feeds.bbci.co.uk/news/world/rss.xml',
-  'https://www.cisa.gov/news.xml'
+  // 'https://rss.cnn.com/rss/edition_world.rss'
 ];
 
-export async function fetchAndFilterFeeds({ keywords = [], page = 1, limit = 20 }) {
-  const results = [];
+export async function parseRSS(keywords) {
+  let allItems = [];
 
   for (const url of FEEDS) {
-    try {
-      const feed = await parser.parseURL(url);
-      feed.items.forEach(item => {
-        const match = keywords.some(keyword =>
-          (item.title || '').toLowerCase().includes(keyword.toLowerCase()) ||
-          (item.contentSnippet || '').toLowerCase().includes(keyword.toLowerCase())
-        );
-        if (match || keywords.length === 0) {
-          results.push(item);
-        }
-      });
-    } catch (err) {
-      console.error(`Error parsing ${url}:`, err.message);
-    }
+    const feed = await parser.parseURL(url);
+    allItems.push(...feed.items);
   }
 
-  const start = (page - 1) * limit;
-  const end = start + limit;
-  return {
-    items: results.slice(start, end),
-    total: results.length
-  };
+  if (keywords.length === 0) return allItems.slice(0, 20);
+
+  return allItems
+    .filter(item =>
+      keywords.some(kw =>
+        (item.title || '').toLowerCase().includes(kw) ||
+        (item.contentSnippet || '').toLowerCase().includes(kw)
+      )
+    )
+    .slice(0, 20);
 }
 
