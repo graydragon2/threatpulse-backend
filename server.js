@@ -58,6 +58,11 @@ app.get('/rss', async (req, res) => {
   });
 });
 
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+
 app.listen(PORT, () => {
   console.log(`🚀 ThreatPulse RSS API running on port ${PORT}`);
 });
