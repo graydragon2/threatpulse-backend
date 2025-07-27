@@ -4,7 +4,7 @@ import morgan from 'morgan';
 import { parseRSS } from './utils/rssParser.js';
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = parseInt(process.env.PORT) || 3000;
 
 app.use(cors());
 app.use(morgan('dev'));
@@ -38,11 +38,6 @@ app.get('/rss', async (req, res) => {
   }
 });
 
-// ✅ Start Server
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 ThreatPulse API running on port ${PORT}`);
-});
-
-app.listen(PORT, () => {
-  console.log(`🚀 ThreatPulse RSS API running on port ${PORT}`);
 });
