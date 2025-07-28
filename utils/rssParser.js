@@ -10,10 +10,14 @@ const feedSources = [
   { name: 'Reuters', url: 'http://feeds.reuters.com/reuters/topNews' }
 ];
 
-export async function parseRSS(keywords = []) {
+export async function parseRSS(keywords = [], sources = []) {
   let results = [];
 
-  for (const feed of feedSources) {
+  const selectedFeeds = sources.length > 0
+    ? feedSources.filter(feed => sources.includes(feed.name))
+    : feedSources;
+
+  for (const feed of selectedFeeds) {
     try {
       const parsed = await parser.parseURL(feed.url);
       const filtered = parsed.items.filter(item => {
@@ -37,3 +41,4 @@ export async function parseRSS(keywords = []) {
 
   return results;
 }
+
