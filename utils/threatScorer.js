@@ -1,4 +1,11 @@
-export function scoreThreat(item) {
+// utils/threatScorer.js
+
+/**
+ * Score a threat based on keyword severity and return threat level + numeric score
+ * @param {Object} item - Feed item containing title and contentSnippet
+ * @returns {{ level: string, value: number }}
+ */
+function scoreThreat(item) {
   const title = (item.title || '').toLowerCase();
   const snippet = (item.contentSnippet || '').toLowerCase();
 
@@ -18,11 +25,40 @@ export function scoreThreat(item) {
     if (title.includes(word) || snippet.includes(word)) score += 1;
   }
 
+  let level = 'low';
   if (score >= 6) {
-    return { level: 'high', value: score };
+    level = 'high';
   } else if (score >= 3) {
-    return { level: 'medium', value: score };
-  } else {
-    return { level: 'low', value: score };
+    level = 'medium';
   }
+
+  return { level, value: score };
 }
+
+/**
+ * Classify threat type based on content
+ * @param {Object} item - Feed item with title and snippet
+ * @returns {string} Category (Cybersecurity, Physical, Geopolitical, General)
+ */
+function classifyThreat(item) {
+  const text = ((item.title || '') + ' ' + (item.contentSnippet || '')).toLowerCase();
+
+  if (text.includes('cyber') || text.includes('breach') || text.includes('ransomware') || text.includes('malware')) {
+    return 'Cybersecurity';
+  }
+
+  if (text.includes('explosion') || text.includes('shooting') || text.includes('gunfire') || text.includes('attack')) {
+    return 'Physical';
+  }
+
+  if (text.includes('iran') || text.includes('russia') || text.includes('china') || text.includes('nato') || text.includes('military')) {
+    return 'Geopolitical';
+  }
+
+  return 'General';
+}
+
+module.exports = {
+  scoreThreat,
+  classifyThreat,
+};
