@@ -1,6 +1,7 @@
 // utils/rssParser.js
 
 import Parser from 'rss-parser';
+import { scoreThreat } from './threatScorer.js';
 
 const parser = new Parser();
 
@@ -10,13 +11,11 @@ const feedSources = [
   { name: 'Reuters', url: 'http://feeds.reuters.com/reuters/topNews' }
 ];
 
-export async function parseRSS(keywords = [], sourceFilter = '') {
+export async function parseRSS(keywords = [], sourceFilter = []) {
   let results = [];
 
   for (const feed of feedSources) {
-    if (sourceFilter && feed.name.toLowerCase() !== sourceFilter.toLowerCase()) {
-      continue;
-    }
+    if (sourceFilter.length && !sourceFilter.includes(feed.name)) continue;
 
     try {
       const parsed = await parser.parseURL(feed.url);
@@ -30,7 +29,8 @@ export async function parseRSS(keywords = [], sourceFilter = '') {
         link: item.link,
         pubDate: item.pubDate,
         contentSnippet: item.contentSnippet || '',
-        source: feed.name
+        source: feed.name,
+        threatScore: scoreThreat(item)
       }));
 
       results.push(...enriched);
