@@ -7,7 +7,7 @@ import { parseRSS } from './utils/rssParser.js';
 import { scoreThreat } from './utils/threatScorer.js';
 
 const app = express();
-const PORT = process.env.PORT;
+const PORT = process.env.PORT || 3001;
 
 app.use(cors());
 app.use(morgan('dev'));
@@ -49,7 +49,7 @@ app.get('/rss', async (req, res) => {
       limit
     });
   } catch (err) {
-    console.error('RSS Fetch Error:', err);
+    console.error('RSS fetch error:', err);
     res.status(500).json({ success: false, message: 'Failed to fetch RSS feed' });
   }
 });

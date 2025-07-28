@@ -41,5 +41,3 @@ export async function parseRSS(keywords = [], sourceFilter = '') {
 
   return results;
 }
-
-
