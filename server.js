@@ -7,7 +7,7 @@ import { parseRSS } from './utils/rssParser.js';
 import { scoreThreat } from './utils/threatScorer.js';
 
 const app = express();
-const PORT = parseInt(process.env.PORT) || 3000;
+const PORT = process.env.PORT; // ✅ Do NOT fall back to hardcoded port
 
 app.use(cors());
 app.use(morgan('dev'));
@@ -26,7 +26,6 @@ app.get('/rss', async (req, res) => {
   try {
     let items = await parseRSS(keywords.map(k => k.toLowerCase()));
 
-    // ✅ Append AI threat score to each item
     items = items.map(item => ({
       ...item,
       threatScore: scoreThreat(item)
@@ -48,10 +47,6 @@ app.get('/rss', async (req, res) => {
   }
 });
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 ThreatPulse API running on port ${PORT}`);
-});
-
-app.listen(PORT, '0.0.0.0', () => {
+app.listen(PORT, () => {
   console.log(`🚀 ThreatPulse API running on port ${PORT}`);
 });
