@@ -6,15 +6,15 @@ import { parseRSS } from './utils/rssParser.js';
 const app = express();
 const PORT = parseInt(process.env.PORT) || 3000;
 
-app.use(cors());
-app.use(morgan('dev'));
+app.use(cors());              // ✅ Enables frontend-to-backend requests
+app.use(morgan('dev'));       // ✅ Logs every request for debugging
 
-// ✅ Health Check
+// ✅ Health check
 app.get('/', (req, res) => {
   res.send('🟢 ThreatPulse API is live');
 });
 
-// ✅ RSS Feed Endpoint (now calling utility logic)
+// ✅ RSS endpoint with pagination
 app.get('/rss', async (req, res) => {
   const keywords = req.query.keywords ? req.query.keywords.split(',') : [];
   const page = parseInt(req.query.page) || 1;
