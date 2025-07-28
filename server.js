@@ -2,26 +2,34 @@ import express from 'express';
 import cors from 'cors';
 import morgan from 'morgan';
 import { parseRSS } from './utils/rssParser.js';
+import { scoreThreat } from './utils/threatScorer.js';
 
 const app = express();
 const PORT = parseInt(process.env.PORT) || 3000;
 
-app.use(cors());              // ✅ Enables frontend-to-backend requests
-app.use(morgan('dev'));       // ✅ Logs every request for debugging
+app.use(cors());
+app.use(morgan('dev'));
 
-// ✅ Health check
+// ✅ Health Check
 app.get('/', (req, res) => {
   res.send('🟢 ThreatPulse API is live');
 });
 
-// ✅ RSS endpoint with pagination
+// ✅ RSS Feed Endpoint with keyword filtering, pagination, and threat scoring
 app.get('/rss', async (req, res) => {
   const keywords = req.query.keywords ? req.query.keywords.split(',') : [];
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 20;
 
   try {
-    const items = await parseRSS(keywords.map(k => k.toLowerCase()));
+    let items = await parseRSS(keywords.map(k => k.toLowerCase()));
+
+    // ✅ Append AI threat score to each item
+    items = items.map(item => ({
+      ...item,
+      threatScore: scoreThreat(item)
+    }));
+
     const start = (page - 1) * limit;
     const end = start + limit;
 
