@@ -7,14 +7,15 @@ import { parseRSS } from './utils/rssParser.js';
 import { scoreThreat } from './utils/threatScorer.js';
 
 const app = express();
-const PORT = process.env.PORT; // ✅ Do NOT fall back to hardcoded port
+const PORT = process.env.PORT;
 
 app.use(cors());
 app.use(morgan('dev'));
 
-// ✅ Health Check
+// ✅ Health check route with JSON response for frontend
 app.get('/health', (req, res) => {
-  res.send('🟢 ThreatPulse API is live');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.json({ status: 'ok' });
 });
 
 // ✅ RSS Feed Endpoint with keyword filtering, pagination, and threat scoring
