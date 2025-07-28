@@ -19,27 +19,34 @@ app.get('/health', (req, res) => {
 
 app.get('/rss', async (req, res) => {
   const keywords = req.query.keywords ? req.query.keywords.split(',') : [];
-  const sources = req.query.sources ? req.query.sources.split(',') : [];
   const page = parseInt(req.query.page) || 1;
-  const limit = parseInt(req.query.limit) || 10;
+  const limit = parseInt(req.query.limit) || 20;
+  const sourceFilter = req.query.source || '';
 
   try {
-    let items = await parseRSS(keywords.map(k => k.toLowerCase()), sources);
+    let items = await parseRSS(keywords.map(k => k.toLowerCase()), sourceFilter);
 
-    items = items.map(item => ({
-      ...item,
-      threatScore: scoreThreat(item)
-    }));
+    items = items.map(item => {
+      const score = scoreThreat(item);
+      return {
+        ...item,
+        threatScore: score,
+        threatLevel:
+          score >= 75 ? 'high' :
+          score >= 40 ? 'medium' :
+          'low'
+      };
+    });
 
     const start = (page - 1) * limit;
-    const end = start + limit;
+    const paginatedItems = items.slice(start, start + limit);
 
     res.json({
       success: true,
-      items: items.slice(start, end),
+      items: paginatedItems,
+      total: items.length,
       page,
-      limit,
-      total: items.length
+      limit
     });
   } catch (err) {
     console.error('RSS Fetch Error:', err);
