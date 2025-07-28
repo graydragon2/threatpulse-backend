@@ -24,14 +24,22 @@ export async function parseRSS(keywords = [], sourceFilter = []) {
         return keywords.length === 0 || keywords.some(k => content.includes(k));
       });
 
-      const enriched = filtered.map(item => ({
-        title: item.title,
-        link: item.link,
-        pubDate: item.pubDate,
-        contentSnippet: item.contentSnippet || '',
-        source: feed.name,
-        threatScore: scoreThreat(item)
-      }));
+      const enriched = filtered.map(item => {
+        const score = scoreThreat(item);
+        let threatLevel = 'low';
+        if (score >= 70) threatLevel = 'high';
+        else if (score >= 40) threatLevel = 'medium';
+
+        return {
+          title: item.title,
+          link: item.link,
+          pubDate: item.pubDate,
+          contentSnippet: item.contentSnippet || '',
+          source: feed.name,
+          threatScore: score,
+          threatLevel
+        };
+      });
 
       results.push(...enriched);
     } catch (err) {
