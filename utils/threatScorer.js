@@ -1,11 +1,6 @@
 // utils/threatScorer.js
 
-/**
- * Score a threat based on keyword severity and return threat level + numeric score
- * @param {Object} item - Feed item containing title and contentSnippet
- * @returns {{ level: string, value: number }}
- */
-function scoreThreat(item) {
+export function scoreThreat(item) {
   const title = (item.title || '').toLowerCase();
   const snippet = (item.contentSnippet || '').toLowerCase();
 
@@ -26,21 +21,13 @@ function scoreThreat(item) {
   }
 
   let level = 'low';
-  if (score >= 6) {
-    level = 'high';
-  } else if (score >= 3) {
-    level = 'medium';
-  }
+  if (score >= 6) level = 'high';
+  else if (score >= 3) level = 'medium';
 
   return { level, value: score };
 }
 
-/**
- * Classify threat type based on content
- * @param {Object} item - Feed item with title and snippet
- * @returns {string} Category (Cybersecurity, Physical, Geopolitical, General)
- */
-function classifyThreat(item) {
+export function classifyThreat(item) {
   const text = ((item.title || '') + ' ' + (item.contentSnippet || '')).toLowerCase();
 
   if (text.includes('cyber') || text.includes('breach') || text.includes('ransomware') || text.includes('malware')) {
@@ -57,8 +44,3 @@ function classifyThreat(item) {
 
   return 'General';
 }
-
-module.exports = {
-  scoreThreat,
-  classifyThreat,
-};

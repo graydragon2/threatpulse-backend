@@ -1,55 +1,39 @@
+// utils/rssParser.js
+
 import Parser from 'rss-parser';
 
 const parser = new Parser();
 
-const FEEDS = [
-  { url: 'https://www.cisa.gov/news.xml', name: 'CISA' },
-  { url: 'https://feeds.bbci.co.uk/news/world/rss.xml', name: 'BBC' },
+const feedSources = [
+  { name: 'CNN', url: 'http://rss.cnn.com/rss/edition.rss' },
+  { name: 'BBC', url: 'http://feeds.bbci.co.uk/news/rss.xml' },
+  { name: 'Reuters', url: 'http://feeds.reuters.com/reuters/topNews' }
 ];
 
-function assessRisk(item) {
-  const title = (item.title || '').toLowerCase();
-  const content = (item.contentSnippet || '').toLowerCase();
-
-  const highRiskTerms = ['attack', 'breach', 'exploit', 'critical', 'ransomware'];
-  const mediumRiskTerms = ['vulnerability', 'warning', 'exposure', 'unauthorized'];
-
-  if (highRiskTerms.some(term => title.includes(term) || content.includes(term))) {
-    return 'high';
-  } else if (mediumRiskTerms.some(term => title.includes(term) || content.includes(term))) {
-    return 'medium';
-  } else {
-    return 'low';
-  }
-}
-
 export async function parseRSS(keywords = []) {
-  let allItems = [];
+  let results = [];
 
-  for (const { url, name } of FEEDS) {
+  for (const feed of feedSources) {
     try {
-      const feed = await parser.parseURL(url);
+      const parsed = await parser.parseURL(feed.url);
+      const filtered = parsed.items.filter(item => {
+        const content = (item.title + ' ' + item.contentSnippet).toLowerCase();
+        return keywords.length === 0 || keywords.some(k => content.includes(k));
+      });
 
-      const taggedItems = feed.items.map(item => ({
-        ...item,
-        source: name,
-        riskScore: assessRisk(item),
+      const enriched = filtered.map(item => ({
+        title: item.title,
+        link: item.link,
+        pubDate: item.pubDate,
+        contentSnippet: item.contentSnippet || '',
+        source: feed.name
       }));
 
-      allItems.push(...taggedItems);
+      results.push(...enriched);
     } catch (err) {
-      console.error(`Failed to parse ${url}:`, err.message);
+      console.warn(`Failed to parse ${feed.name}:`, err.message);
     }
   }
 
-  if (!keywords.length) return allItems;
-
-  return allItems.filter(item =>
-    keywords.some(kw =>
-      (item.title || '').toLowerCase().includes(kw) ||
-      (item.contentSnippet || '').toLowerCase().includes(kw)
-    )
-  );
+  return results;
 }
-
-

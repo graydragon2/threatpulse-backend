@@ -1,3 +1,5 @@
+// server.js
+
 import express from 'express';
 import cors from 'cors';
 import morgan from 'morgan';
@@ -11,7 +13,7 @@ app.use(cors());
 app.use(morgan('dev'));
 
 // ✅ Health Check
-app.get('/', (req, res) => {
+app.get('/health', (req, res) => {
   res.send('🟢 ThreatPulse API is live');
 });
 
@@ -44,6 +46,10 @@ app.get('/rss', async (req, res) => {
     console.error('RSS Fetch Error:', err);
     res.status(500).json({ success: false, message: 'Failed to fetch RSS feed' });
   }
+});
+
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 ThreatPulse API running on port ${PORT}`);
 });
 
 app.listen(PORT, '0.0.0.0', () => {
