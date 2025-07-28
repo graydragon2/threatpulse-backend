@@ -2,12 +2,26 @@ import Parser from 'rss-parser';
 
 const parser = new Parser();
 
-// Define feed list and readable names
 const FEEDS = [
   { url: 'https://www.cisa.gov/news.xml', name: 'CISA' },
   { url: 'https://feeds.bbci.co.uk/news/world/rss.xml', name: 'BBC' },
-  // { url: 'https://rss.cnn.com/rss/edition_world.rss', name: 'CNN' },
 ];
+
+function assessRisk(item) {
+  const title = (item.title || '').toLowerCase();
+  const content = (item.contentSnippet || '').toLowerCase();
+
+  const highRiskTerms = ['attack', 'breach', 'exploit', 'critical', 'ransomware'];
+  const mediumRiskTerms = ['vulnerability', 'warning', 'exposure', 'unauthorized'];
+
+  if (highRiskTerms.some(term => title.includes(term) || content.includes(term))) {
+    return 'high';
+  } else if (mediumRiskTerms.some(term => title.includes(term) || content.includes(term))) {
+    return 'medium';
+  } else {
+    return 'low';
+  }
+}
 
 export async function parseRSS(keywords = []) {
   let allItems = [];
@@ -19,6 +33,7 @@ export async function parseRSS(keywords = []) {
       const taggedItems = feed.items.map(item => ({
         ...item,
         source: name,
+        riskScore: assessRisk(item),
       }));
 
       allItems.push(...taggedItems);
