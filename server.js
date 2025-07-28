@@ -7,12 +7,12 @@ import { parseRSS } from './utils/rssParser.js';
 import { scoreThreat } from './utils/threatScorer.js';
 
 const app = express();
-const PORT = process.env.PORT;
+const PORT = process.env.PORT || 3001;
 
 app.use(cors());
 app.use(morgan('dev'));
 
-// ✅ Health check route with JSON response for frontend
+// ✅ Health check route
 app.get('/health', (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.json({ status: 'ok' });
@@ -27,10 +27,15 @@ app.get('/rss', async (req, res) => {
   try {
     let items = await parseRSS(keywords.map(k => k.toLowerCase()));
 
-    items = items.map(item => ({
-      ...item,
-      threatScore: scoreThreat(item)
-    }));
+    // ✅ Attach threatScore AND threatLevel to each item
+    items = items.map(item => {
+      const score = scoreThreat(item);
+      return {
+        ...item,
+        threatScore: score.value,
+        threatLevel: score.level,
+      };
+    });
 
     const start = (page - 1) * limit;
     const end = start + limit;
@@ -40,7 +45,7 @@ app.get('/rss', async (req, res) => {
       items: items.slice(start, end),
       page,
       limit,
-      total: items.length
+      total: items.length,
     });
   } catch (err) {
     console.error('RSS Fetch Error:', err);
