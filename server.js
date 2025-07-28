@@ -7,45 +7,39 @@ import { parseRSS } from './utils/rssParser.js';
 import { scoreThreat } from './utils/threatScorer.js';
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 5000;
 
 app.use(cors());
 app.use(morgan('dev'));
 
 // ✅ Health check route
 app.get('/health', (req, res) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
   res.json({ status: 'ok' });
 });
 
-// ✅ RSS Feed Endpoint with keyword filtering, pagination, and threat scoring
+// ✅ RSS endpoint with keyword filtering, pagination, scoring
 app.get('/rss', async (req, res) => {
   const keywords = req.query.keywords ? req.query.keywords.split(',') : [];
   const page = parseInt(req.query.page) || 1;
-  const limit = parseInt(req.query.limit) || 20;
+  const limit = parseInt(req.query.limit) || 50;
 
   try {
     let items = await parseRSS(keywords.map(k => k.toLowerCase()));
+    items = items.map(item => ({
+      ...item,
+      threatScore: scoreThreat(item)
+    }));
 
-    // ✅ Attach threatScore AND threatLevel to each item
-    items = items.map(item => {
-      const score = scoreThreat(item);
-      return {
-        ...item,
-        threatScore: score.value,
-        threatLevel: score.level,
-      };
-    });
-
+    const total = items.length;
     const start = (page - 1) * limit;
-    const end = start + limit;
+    const paginatedItems = items.slice(start, start + limit);
 
     res.json({
       success: true,
-      items: items.slice(start, end),
+      items: paginatedItems,
       page,
       limit,
-      total: items.length,
+      total
     });
   } catch (err) {
     console.error('RSS Fetch Error:', err);
