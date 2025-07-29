@@ -5,50 +5,62 @@ import { scoreThreat } from './threatScorer.js';
 
 const parser = new Parser();
 
-const feedSources = [
-  { name: 'CNN', url: 'http://rss.cnn.com/rss/edition.rss' },
-  { name: 'BBC', url: 'http://feeds.bbci.co.uk/news/rss.xml' },
-  { name: 'Reuters', url: 'http://feeds.reuters.com/reuters/topNews' }
-];
+const DEFAULT_DAYS_BACK = 3;
 
-export async function parseRSS(keywords = [], sourceFilter = [], startDate = null, endDate = null) {
-  let results = [];
+export async function parseRSS(keywords = [], sources = [], startDate = null, endDate = null) {
+  const sourceMap = {
+    CNN: 'http://rss.cnn.com/rss/edition.rss',
+    BBC: 'http://feeds.bbci.co.uk/news/rss.xml',
+    Reuters: 'http://feeds.reuters.com/reuters/topNews',
+  };
 
-  for (const feed of feedSources) {
-    if (sourceFilter.length && !sourceFilter.includes(feed.name)) continue;
+  const selectedFeeds = sources.length ? sources.map(src => sourceMap[src]) : Object.values(sourceMap);
 
+  const defaultStartDate = new Date();
+  defaultStartDate.setDate(defaultStartDate.getDate() - DEFAULT_DAYS_BACK);
+  const fromDate = startDate || defaultStartDate;
+
+  const allItems = [];
+
+  for (const feedUrl of selectedFeeds) {
     try {
-      const parsed = await parser.parseURL(feed.url);
-      const filtered = parsed.items.filter(item => {
-        const content = (item.title + ' ' + item.contentSnippet).toLowerCase();
-        const pubDate = new Date(item.pubDate);
+      const feed = await parser.parseURL(feedUrl);
 
-        const matchKeywords = keywords.length === 0 || keywords.some(k => content.includes(k));
-        const matchStart = startDate ? pubDate >= startDate : true;
-        const matchEnd = endDate ? pubDate <= endDate : true;
+      const items = feed.items.map(item => {
+        const threatScore = scoreThreat(item);
+        let threatLevel = 'low';
+        if (threatScore >= 70) threatLevel = 'high';
+        else if (threatScore >= 30) threatLevel = 'medium';
 
-        return matchKeywords && matchStart && matchEnd;
+        return {
+          title: item.title || '',
+          link: item.link || '',
+          pubDate: item.pubDate || '',
+          contentSnippet: item.contentSnippet || '',
+          source: Object.keys(sourceMap).find(key => sourceMap[key] === feedUrl) || 'Unknown',
+          threatScore,
+          threatLevel,
+        };
       });
 
-      const enriched = filtered.map(item => ({
-        title: item.title,
-        link: item.link,
-        pubDate: item.pubDate,
-        contentSnippet: item.contentSnippet || '',
-        source: feed.name,
-        threatScore: scoreThreat(item),
-        threatLevel:
-          scoreThreat(item) >= 80 ? 'high' :
-          scoreThreat(item) >= 50 ? 'medium' : 'low'
-      }));
-
-      results.push(...enriched);
+      allItems.push(...items);
     } catch (err) {
-      console.warn(`Failed to parse ${feed.name}:`, err.message);
+      console.error(`Failed to parse feed ${feedUrl}:`, err);
     }
   }
 
-  return results;
+  const filtered = allItems.filter(item => {
+    const pubTime = new Date(item.pubDate);
+    if (isNaN(pubTime)) return false;
+    if (pubTime < fromDate) return false;
+    if (endDate && pubTime > new Date(endDate)) return false;
+
+    const content = `${item.title} ${item.contentSnippet}`.toLowerCase();
+    return keywords.length === 0 || keywords.some(kw => content.includes(kw.toLowerCase()));
+  });
+
+  return filtered;
 }
+
 
 
