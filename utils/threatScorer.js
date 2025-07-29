@@ -1,19 +1,17 @@
 // utils/threatScorer.js
 
-const highRiskWords = ['explosion', 'attack', 'shooting', 'dead', 'killed'];
-const mediumRiskWords = ['protest', 'fire', 'evacuate', 'alert'];
-
 export function scoreThreat(item) {
-  const text = `${item.title} ${item.contentSnippet}`.toLowerCase();
+  const title = (item.title || '').toLowerCase();
+  const snippet = (item.contentSnippet || '').toLowerCase();
+
+  const content = title + ' ' + snippet;
+
   let score = 0;
 
-  for (const word of highRiskWords) {
-    if (text.includes(word)) score += 30;
-  }
+  if (content.includes('attack') || content.includes('explosion')) score += 50;
+  if (content.includes('death') || content.includes('killed')) score += 30;
+  if (content.includes('warning') || content.includes('threat')) score += 20;
+  if (content.includes('breaking')) score += 10;
 
-  for (const word of mediumRiskWords) {
-    if (text.includes(word)) score += 15;
-  }
-
-  return Math.min(score, 100);
+  return Math.min(100, score);
 }

@@ -27,8 +27,8 @@ export async function parseRSS(keywords = [], sourceFilter = []) {
       const enriched = filtered.map(item => {
         const score = scoreThreat(item);
         let threatLevel = 'low';
-        if (score >= 70) threatLevel = 'high';
-        else if (score >= 40) threatLevel = 'medium';
+        if (score >= 80) threatLevel = 'high';
+        else if (score >= 50) threatLevel = 'medium';
 
         return {
           title: item.title,
