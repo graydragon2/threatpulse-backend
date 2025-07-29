@@ -6,6 +6,8 @@ import morgan from 'morgan';
 import { parseRSS } from './utils/rssParser.js';
 
 const app = express();
+
+// Always use dynamic port assignment first; fallback only if not deployed
 const PORT = process.env.PORT ?? 3000;
 
 app.use(cors());
@@ -18,12 +20,11 @@ app.get('/health', (req, res) => {
 
 app.get('/rss', async (req, res) => {
   const keywords = req.query.keywords ? req.query.keywords.split(',') : [];
-  const page = parseInt(req.query.page) || 1;
-  const limit = parseInt(req.query.limit) || 20;
-  const sources = Array.isArray(req.query.sources) ? req.query.sources : req.query.sources ? [req.query.sources] : [];
-
+  const sources = req.query.sources ? [].concat(req.query.sources) : [];
   const startDate = req.query.startDate ? new Date(req.query.startDate) : null;
   const endDate = req.query.endDate ? new Date(req.query.endDate) : null;
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 20;
 
   try {
     let items = await parseRSS(keywords.map(k => k.toLowerCase()), sources, startDate, endDate);
@@ -44,10 +45,11 @@ app.get('/rss', async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`🚀 ThreatPulse API running on port ${PORT}`);
-});
-
-app.listen(PORT, () => {
-  console.log(`🚀 ThreatPulse API running on port ${PORT}`);
-});
+// Add try/catch to trap bind failures
+try {
+  app.listen(PORT, () => {
+    console.log(`🚀 ThreatPulse API running on port ${PORT}`);
+  });
+} catch (err) {
+  console.error(`❌ Failed to start server on port ${PORT}:`, err);
+}
