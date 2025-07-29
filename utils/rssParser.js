@@ -25,10 +25,10 @@ export async function parseRSS(keywords = [], sourceFilter = []) {
       });
 
       const enriched = filtered.map(item => {
-        const score = scoreThreat(item);
+        const threatScore = scoreThreat(item);
         let threatLevel = 'low';
-        if (score >= 80) threatLevel = 'high';
-        else if (score >= 50) threatLevel = 'medium';
+        if (threatScore >= 70) threatLevel = 'high';
+        else if (threatScore >= 40) threatLevel = 'medium';
 
         return {
           title: item.title,
@@ -36,7 +36,7 @@ export async function parseRSS(keywords = [], sourceFilter = []) {
           pubDate: item.pubDate,
           contentSnippet: item.contentSnippet || '',
           source: feed.name,
-          threatScore: score,
+          threatScore,
           threatLevel
         };
       });
