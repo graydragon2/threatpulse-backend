@@ -3,7 +3,8 @@
 import express from 'express';
 import cors from 'cors';
 import morgan from 'morgan';
-import { parseRSS } from './utils/rssParser.js';
+import { parseRSS } from './rssParser.js';
+
 
 const app = express();
 const PORT = process.env.PORT || 8080;
