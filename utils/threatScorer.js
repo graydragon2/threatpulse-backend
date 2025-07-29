@@ -1,17 +1,48 @@
-// utils/threatScorer.js
+// server.js
 
-export function scoreThreat(item) {
-  const title = (item.title || '').toLowerCase();
-  const snippet = (item.contentSnippet || '').toLowerCase();
+import express from 'express';
+import cors from 'cors';
+import morgan from 'morgan';
+import { parseRSS } from './utils/rssParser.js';
 
-  const content = title + ' ' + snippet;
+const app = express();
+const PORT = process.env.PORT || 8080;
 
-  let score = 0;
+app.use(cors());
+app.use(morgan('dev'));
 
-  if (content.includes('attack') || content.includes('explosion')) score += 50;
-  if (content.includes('death') || content.includes('killed')) score += 30;
-  if (content.includes('warning') || content.includes('threat')) score += 20;
-  if (content.includes('breaking')) score += 10;
+app.get('/health', (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.json({ status: 'ok' });
+});
 
-  return Math.min(100, score);
-}
+app.get('/rss', async (req, res) => {
+  const keywords = req.query.keywords ? req.query.keywords.split(',') : [];
+  const sources = req.query.sources ? [].concat(req.query.sources) : [];
+  const startDate = req.query.startDate ? new Date(req.query.startDate) : null;
+  const endDate = req.query.endDate ? new Date(req.query.endDate) : null;
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 20;
+
+  try {
+    let items = await parseRSS(keywords.map(k => k.toLowerCase()), sources, startDate, endDate);
+
+    const start = (page - 1) * limit;
+    const end = start + limit;
+
+    res.json({
+      success: true,
+      items: items.slice(start, end),
+      page,
+      limit,
+      total: items.length
+    });
+  } catch (err) {
+    console.error('RSS Fetch Error:', err);
+    res.status(500).json({ success: false, message: 'Failed to fetch RSS feed' });
+  }
+});
+
+app.listen(PORT, () => {
+  console.log(`🚀 ThreatPulse API running on port ${PORT}`);
+});

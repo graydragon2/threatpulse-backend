@@ -11,7 +11,7 @@ const feedSources = [
   { name: 'Reuters', url: 'http://feeds.reuters.com/reuters/topNews' }
 ];
 
-export async function parseRSS(keywords = [], sourceFilter = []) {
+export async function parseRSS(keywords = [], sourceFilter = [], startDate = null, endDate = null) {
   let results = [];
 
   for (const feed of feedSources) {
@@ -21,25 +21,26 @@ export async function parseRSS(keywords = [], sourceFilter = []) {
       const parsed = await parser.parseURL(feed.url);
       const filtered = parsed.items.filter(item => {
         const content = (item.title + ' ' + item.contentSnippet).toLowerCase();
-        return keywords.length === 0 || keywords.some(k => content.includes(k));
+
+        const pubDate = new Date(item.pubDate);
+        const dateMatch =
+          (!startDate || pubDate >= startDate) &&
+          (!endDate || pubDate <= endDate);
+
+        const keywordMatch =
+          keywords.length === 0 || keywords.some(k => content.includes(k));
+
+        return keywordMatch && dateMatch;
       });
 
-      const enriched = filtered.map(item => {
-        const threatScore = scoreThreat(item);
-        let threatLevel = 'low';
-        if (threatScore >= 70) threatLevel = 'high';
-        else if (threatScore >= 40) threatLevel = 'medium';
-
-        return {
-          title: item.title,
-          link: item.link,
-          pubDate: item.pubDate,
-          contentSnippet: item.contentSnippet || '',
-          source: feed.name,
-          threatScore,
-          threatLevel
-        };
-      });
+      const enriched = filtered.map(item => ({
+        title: item.title,
+        link: item.link,
+        pubDate: item.pubDate,
+        contentSnippet: item.contentSnippet || '',
+        source: feed.name,
+        threatScore: scoreThreat(item)
+      }));
 
       results.push(...enriched);
     } catch (err) {
@@ -49,3 +50,4 @@ export async function parseRSS(keywords = [], sourceFilter = []) {
 
   return results;
 }
+
