@@ -20,7 +20,12 @@ app.get('/rss', async (req, res) => {
   const keywords = req.query.keywords ? req.query.keywords.split(',') : [];
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 20;
-  const sources = req.query.sources ? req.query.sources.split(',') : [];
+
+  const sources = Array.isArray(req.query.sources)
+    ? req.query.sources
+    : req.query.sources
+      ? [req.query.sources]
+      : [];
 
   try {
     const items = await parseRSS(keywords.map(k => k.toLowerCase()), sources);
