@@ -20,20 +20,13 @@ app.get('/rss', async (req, res) => {
   const keywords = req.query.keywords ? req.query.keywords.split(',') : [];
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 20;
-  const sources = req.query.sources
-    ? Array.isArray(req.query.sources)
-      ? req.query.sources
-      : [req.query.sources]
-    : [];
-  const risk = req.query.risk || ''; // 'high', 'medium', or 'low'
+  const sources = Array.isArray(req.query.sources) ? req.query.sources : req.query.sources ? [req.query.sources] : [];
+
+  const startDate = req.query.startDate ? new Date(req.query.startDate) : null;
+  const endDate = req.query.endDate ? new Date(req.query.endDate) : null;
 
   try {
-    let items = await parseRSS(keywords.map(k => k.toLowerCase()), sources);
-
-    // Apply risk level filtering
-    if (risk) {
-      items = items.filter(item => item.threatLevel === risk);
-    }
+    let items = await parseRSS(keywords.map(k => k.toLowerCase()), sources, startDate, endDate);
 
     const start = (page - 1) * limit;
     const end = start + limit;
@@ -49,6 +42,10 @@ app.get('/rss', async (req, res) => {
     console.error('RSS Fetch Error:', err);
     res.status(500).json({ success: false, message: 'Failed to fetch RSS feed' });
   }
+});
+
+app.listen(PORT, () => {
+  console.log(`🚀 ThreatPulse API running on port ${PORT}`);
 });
 
 app.listen(PORT, () => {

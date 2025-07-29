@@ -21,16 +21,13 @@ export async function parseRSS(keywords = [], sourceFilter = [], startDate = nul
       const parsed = await parser.parseURL(feed.url);
       const filtered = parsed.items.filter(item => {
         const content = (item.title + ' ' + item.contentSnippet).toLowerCase();
-
         const pubDate = new Date(item.pubDate);
-        const dateMatch =
-          (!startDate || pubDate >= startDate) &&
-          (!endDate || pubDate <= endDate);
 
-        const keywordMatch =
-          keywords.length === 0 || keywords.some(k => content.includes(k));
+        const matchKeywords = keywords.length === 0 || keywords.some(k => content.includes(k));
+        const matchStart = startDate ? pubDate >= startDate : true;
+        const matchEnd = endDate ? pubDate <= endDate : true;
 
-        return keywordMatch && dateMatch;
+        return matchKeywords && matchStart && matchEnd;
       });
 
       const enriched = filtered.map(item => ({
@@ -39,7 +36,10 @@ export async function parseRSS(keywords = [], sourceFilter = [], startDate = nul
         pubDate: item.pubDate,
         contentSnippet: item.contentSnippet || '',
         source: feed.name,
-        threatScore: scoreThreat(item)
+        threatScore: scoreThreat(item),
+        threatLevel:
+          scoreThreat(item) >= 80 ? 'high' :
+          scoreThreat(item) >= 50 ? 'medium' : 'low'
       }));
 
       results.push(...enriched);
@@ -50,4 +50,5 @@ export async function parseRSS(keywords = [], sourceFilter = [], startDate = nul
 
   return results;
 }
+
 
