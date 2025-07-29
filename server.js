@@ -3,59 +3,60 @@
 import express from 'express';
 import cors from 'cors';
 import morgan from 'morgan';
+import dotenv from 'dotenv';
 import { parseRSS } from './utils/rssParser.js';
-import exportRoutes from './routes/exportRoutes.js';
 import exportRoutes from './routes/export.js';
 
+dotenv.config();
 
 const app = express();
 
-// Always use dynamic port assignment first; fallback only if not deployed
-const PORT = process.env.PORT ?? 3000;
-
+// Middlewares
 app.use(cors());
 app.use(morgan('dev'));
+app.use(express.json());
+
+// API Routes
 app.use('/export', exportRoutes);
-app.use('/', exportRoutes);
 
-
+// Health Check
 app.get('/health', (req, res) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
   res.json({ status: 'ok' });
 });
 
+// Main RSS route
 app.get('/rss', async (req, res) => {
-  const keywords = req.query.keywords ? req.query.keywords.split(',') : [];
-  const sources = req.query.sources ? [].concat(req.query.sources) : [];
-  const startDate = req.query.startDate ? new Date(req.query.startDate) : null;
-  const endDate = req.query.endDate ? new Date(req.query.endDate) : null;
-  const page = parseInt(req.query.page) || 1;
-  const limit = parseInt(req.query.limit) || 20;
-
   try {
-    let items = await parseRSS(keywords.map(k => k.toLowerCase()), sources, startDate, endDate);
+    const {
+      keywords = '',
+      sources = [],
+      startDate,
+      endDate
+    } = req.query;
 
-    const start = (page - 1) * limit;
-    const end = start + limit;
+    const riskLevel = req.query.riskLevel ?? '';
 
-    res.json({
-      success: true,
-      items: items.slice(start, end),
-      page,
-      limit,
-      total: items.length
-    });
-  } catch (err) {
-    console.error('RSS Fetch Error:', err);
-    res.status(500).json({ success: false, message: 'Failed to fetch RSS feed' });
+    const keywordList = keywords.split(',').map(k => k.trim()).filter(Boolean);
+    const sourceList = [].concat(sources); // normalize single/multi
+
+    const start = startDate ? new Date(startDate) : null;
+    const end = endDate ? new Date(endDate) : null;
+
+    const allItems = await parseRSS(keywordList, sourceList, start, end);
+
+    const items = riskLevel
+      ? allItems.filter(item => item.threatLevel === riskLevel)
+      : allItems;
+
+    res.json({ success: true, items, total: items.length });
+  } catch (error) {
+    console.error('RSS fetch error:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch RSS feeds' });
   }
 });
 
-// Add try/catch to trap bind failures
-try {
-  app.listen(PORT, () => {
-    console.log(`🚀 ThreatPulse API running on port ${PORT}`);
-  });
-} catch (err) {
-  console.error(`❌ Failed to start server on port ${PORT}:`, err);
-}
+// Dynamic port for Railway/Vercel
+const PORT = process.env.PORT || 8080;
+app.listen(PORT, () => {
+  console.log(`🚀 ThreatPulse API running on port ${PORT}`);
+});
