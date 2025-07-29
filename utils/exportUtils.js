@@ -1,5 +1,3 @@
-// utils/exportUtils.js
-
 import { parseRSS } from './rssParser.js';
 import { Parser } from 'json2csv';
 import PDFDocument from 'pdfkit';
@@ -19,9 +17,12 @@ export async function exportCSV(req, res) {
       ? items.filter(item => item.threatLevel === riskLevel)
       : items;
 
-    const fields = ['title', 'pubDate', 'source', 'threatLevel', 'link'];
+    const fields = ['title', 'pubDate', 'source', 'threatLevel', 'tags', 'link'];
     const parser = new Parser({ fields });
-    const csv = parser.parse(filtered);
+    const csv = parser.parse(filtered.map(item => ({
+      ...item,
+      tags: Array.isArray(item.tags) ? item.tags.join(', ') : ''
+    })));
 
     const timestamp = new Date().toISOString().slice(0, 10);
     res.header('Content-Type', 'text/csv');
@@ -67,6 +68,7 @@ export async function exportPDF(req, res) {
         .text(`Date: ${item.pubDate}`)
         .text(`Source: ${item.source}`)
         .text(`Risk: ${item.threatLevel}`)
+        .text(`Tags: ${Array.isArray(item.tags) ? item.tags.join(', ') : ''}`)
         .text(`Link: ${item.link}`)
         .moveDown();
     });
