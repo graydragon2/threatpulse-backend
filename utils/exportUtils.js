@@ -4,7 +4,7 @@ import PDFDocument from 'pdfkit';
 
 export async function exportCSV(req, res) {
   try {
-    const { keywords = '', sources = [], riskLevel = '', startDate, endDate } = req.query;
+    const { keywords = '', sources = [], riskLevel = '', startDate, endDate, tags = '' } = req.query;
 
     const items = await parseRSS(
       keywords.split(',').filter(Boolean),
@@ -13,15 +13,19 @@ export async function exportCSV(req, res) {
       endDate ? new Date(endDate) : null
     );
 
-    const filtered = riskLevel
-      ? items.filter(item => item.threatLevel === riskLevel)
-      : items;
+    const tagList = tags.split(',').filter(Boolean).map(t => t.toLowerCase());
 
-    const fields = ['title', 'pubDate', 'source', 'threatLevel', 'tags', 'link'];
+    const filtered = items.filter(item => {
+      const levelMatch = !riskLevel || item.threatLevel === riskLevel;
+      const tagMatch = tagList.length === 0 || (item.tags || []).some(t => tagList.includes(t.toLowerCase()));
+      return levelMatch && tagMatch;
+    });
+
+    const fields = ['title', 'pubDate', 'source', 'threatLevel', 'link', 'tags'];
     const parser = new Parser({ fields });
     const csv = parser.parse(filtered.map(item => ({
       ...item,
-      tags: Array.isArray(item.tags) ? item.tags.join(', ') : ''
+      tags: item.tags?.join(', ') || ''
     })));
 
     const timestamp = new Date().toISOString().slice(0, 10);
@@ -36,7 +40,7 @@ export async function exportCSV(req, res) {
 
 export async function exportPDF(req, res) {
   try {
-    const { keywords = '', sources = [], riskLevel = '', startDate, endDate } = req.query;
+    const { keywords = '', sources = [], riskLevel = '', startDate, endDate, tags = '' } = req.query;
 
     const items = await parseRSS(
       keywords.split(',').filter(Boolean),
@@ -45,9 +49,13 @@ export async function exportPDF(req, res) {
       endDate ? new Date(endDate) : null
     );
 
-    const filtered = riskLevel
-      ? items.filter(item => item.threatLevel === riskLevel)
-      : items;
+    const tagList = tags.split(',').filter(Boolean).map(t => t.toLowerCase());
+
+    const filtered = items.filter(item => {
+      const levelMatch = !riskLevel || item.threatLevel === riskLevel;
+      const tagMatch = tagList.length === 0 || (item.tags || []).some(t => tagList.includes(t.toLowerCase()));
+      return levelMatch && tagMatch;
+    });
 
     const doc = new PDFDocument();
     const timestamp = new Date().toISOString().slice(0, 10);
@@ -60,17 +68,28 @@ export async function exportPDF(req, res) {
     doc.moveDown();
 
     filtered.forEach((item, index) => {
+      let riskColor = 'black';
+      if (item.threatLevel === 'high') riskColor = 'red';
+      else if (item.threatLevel === 'medium') riskColor = 'orange';
+      else if (item.threatLevel === 'low') riskColor = 'green';
+
       doc
+        .fillColor('black')
         .fontSize(12)
         .text(`${index + 1}. ${item.title}`)
         .moveDown(0.2)
         .fontSize(10)
         .text(`Date: ${item.pubDate}`)
         .text(`Source: ${item.source}`)
+        .fillColor(riskColor)
         .text(`Risk: ${item.threatLevel}`)
-        .text(`Tags: ${Array.isArray(item.tags) ? item.tags.join(', ') : ''}`)
-        .text(`Link: ${item.link}`)
-        .moveDown();
+        .fillColor('black');
+
+      if (item.tags && item.tags.length > 0) {
+        doc.fontSize(10).text(`Tags: ${item.tags.join(', ')}`);
+      }
+
+      doc.text(`Link: ${item.link}`).moveDown();
     });
 
     doc.end();
@@ -79,3 +98,4 @@ export async function exportPDF(req, res) {
     res.status(500).json({ error: 'Failed to export PDF' });
   }
 }
+
