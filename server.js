@@ -5,6 +5,7 @@ import cors from 'cors';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
 import { parseRSS } from './utils/rssParser.js';
+import rssRoutes from './routes/rss.js';
 import exportRoutes from './routes/export.js';
 
 dotenv.config();
