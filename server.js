@@ -1,17 +1,17 @@
 // server.js
 
-import express from 'express';
-import cors from 'cors';
-import morgan from 'morgan';
-import dotenv from 'dotenv';
-import { parseRSS } from './utils/rssParser.js';
-import rssRoutes from './routes/rss.js';
-import exportRoutes from './routes/export.js';
+const express = require('express');
+const cors = require('cors');
+const morgan = require('morgan');
+const dotenv = require('dotenv');
+const { parseRSS } = require('./utils/rssParser');
+const rssRoutes = require('./routes/rss');
+const exportRoutes = require('./routes/export');
+const historyRoutes = require('./routes/history');
 
 dotenv.config();
 
 const app = express();
-const historyRoutes = require('./routes/history');
 
 // Middlewares
 app.use(cors());
@@ -34,10 +34,9 @@ app.get('/rss', async (req, res) => {
       keywords = '',
       sources = [],
       startDate,
-      endDate
+      endDate,
+      riskLevel = ''
     } = req.query;
-
-    const riskLevel = req.query.riskLevel ?? '';
 
     const keywordList = keywords.split(',').map(k => k.trim()).filter(Boolean);
     const sourceList = [].concat(sources); // normalize single/multi
