@@ -11,11 +11,13 @@ import exportRoutes from './routes/export.js';
 dotenv.config();
 
 const app = express();
+const historyRoutes = require('./routes/history');
 
 // Middlewares
 app.use(cors());
 app.use(morgan('dev'));
 app.use(express.json());
+app.use('/history', historyRoutes);
 
 // API Routes
 app.use('/export', exportRoutes);
