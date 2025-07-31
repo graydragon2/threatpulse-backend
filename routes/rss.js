@@ -1,42 +1,35 @@
-// routes/rss.js
-
-import express from 'express';
-import { parseRSS } from '../utils/rssParser.js';
+const express = require('express');
+const { parseRSS } = require('../utils/rssParser');
 
 const router = express.Router();
 
-router.get('/feeds', async (req, res) => {
+router.get('/', async (req, res) => {
   try {
     const {
       keywords = '',
       sources = [],
-      riskLevel = '',
       startDate,
       endDate,
-      tags = [],
+      riskLevel = '',
+      tags = ''
     } = req.query;
 
-    const keywordArr = keywords.split(',').map(k => k.trim()).filter(Boolean);
-    const sourceArr = [].concat(sources).filter(Boolean);
-    const tagArr = [].concat(tags).filter(Boolean);
+    const keywordList = keywords.split(',').map(k => k.trim()).filter(Boolean);
+    const sourceList = [].concat(sources);
+    const tagList = tags.split(',').map(t => t.trim()).filter(Boolean);
+    const start = startDate ? new Date(startDate) : null;
+    const end = endDate ? new Date(endDate) : null;
 
-    const items = await parseRSS(
-      keywordArr,
-      sourceArr,
-      startDate ? new Date(startDate) : null,
-      endDate ? new Date(endDate) : null,
-      tagArr
-    );
-
+    const allItems = await parseRSS(keywordList, sourceList, start, end, tagList);
     const filtered = riskLevel
-      ? items.filter(item => item.threatLevel === riskLevel)
-      : items;
+      ? allItems.filter(item => item.threatLevel === riskLevel)
+      : allItems;
 
-    res.json({ items: filtered });
+    res.json({ success: true, items: filtered, total: filtered.length });
   } catch (err) {
-    console.error('Error in /feeds route:', err);
-    res.status(500).json({ error: 'Failed to fetch feed data' });
+    console.error('RSS route error:', err);
+    res.status(500).json({ error: 'Failed to fetch threats' });
   }
 });
 
-export default router;
+module.exports = router;
