@@ -1,6 +1,4 @@
-// utils/threatScorer.js
-
-export function scoreThreat(item) {
+function scoreThreat(item) {
   const title = (item.title || '').toLowerCase();
   const snippet = (item.contentSnippet || '').toLowerCase();
   const content = title + ' ' + snippet;
@@ -15,7 +13,7 @@ export function scoreThreat(item) {
   return Math.min(100, score);
 }
 
-export function extractTags(item) {
+function extractTags(item) {
   const text = `${item.title} ${item.contentSnippet}`.toLowerCase();
   const tags = [];
 
@@ -33,3 +31,8 @@ export function extractTags(item) {
 
   return tags;
 }
+
+module.exports = {
+  scoreThreat,
+  extractTags,
+};

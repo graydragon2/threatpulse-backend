@@ -1,11 +1,9 @@
-// utils/historyStorage.js
-
-import { v4 as uuidv4 } from 'uuid';
+const { v4: uuidv4 } = require('uuid');
 
 // Temporary in-memory storage (replace with file/db as needed)
 const history = [];
 
-export function saveReportMetadata({ filename, format, filters }) {
+function saveReportMetadata({ filename, format, filters }) {
   const entry = {
     id: uuidv4(),
     filename,
@@ -17,6 +15,11 @@ export function saveReportMetadata({ filename, format, filters }) {
   return entry;
 }
 
-export function getReportHistory() {
+function getReportHistory() {
   return history;
 }
+
+module.exports = {
+  saveReportMetadata,
+  getReportHistory,
+};

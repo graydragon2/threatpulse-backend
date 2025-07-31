@@ -1,12 +1,12 @@
-import express from 'express';
-import { exportCSV, exportPDF } from '../utils/exportUtils.js';
+const express = require('express');
+const { exportCSV, exportPDF } = require('../utils/exportUtils');
 
 const router = express.Router();
 
 // GET /export/csv
-router.get('/export/csv', exportCSV);
+router.get('/csv', exportCSV);
 
 // GET /export/pdf
-router.get('/export/pdf', exportPDF);
+router.get('/pdf', exportPDF);
 
-export default router;
+module.exports = router;

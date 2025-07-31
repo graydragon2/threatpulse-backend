@@ -1,10 +1,8 @@
-// utils/exportUtils.js
+const { parseRSS } = require('./rssParser');
+const { Parser } = require('json2csv');
+const PDFDocument = require('pdfkit');
 
-import { parseRSS } from './rssParser.js';
-import { Parser } from 'json2csv';
-import PDFDocument from 'pdfkit';
-
-export async function exportCSV(req, res) {
+async function exportCSV(req, res) {
   try {
     const {
       keywords = '',
@@ -21,7 +19,8 @@ export async function exportCSV(req, res) {
       keywords.split(',').filter(Boolean),
       [].concat(sources),
       startDate ? new Date(startDate) : null,
-      endDate ? new Date(endDate) : null
+      endDate ? new Date(endDate) : null,
+      parsedTags
     );
 
     const filtered = items.filter(item => {
@@ -44,7 +43,7 @@ export async function exportCSV(req, res) {
   }
 }
 
-export async function exportPDF(req, res) {
+async function exportPDF(req, res) {
   try {
     const {
       keywords = '',
@@ -61,7 +60,8 @@ export async function exportPDF(req, res) {
       keywords.split(',').filter(Boolean),
       [].concat(sources),
       startDate ? new Date(startDate) : null,
-      endDate ? new Date(endDate) : null
+      endDate ? new Date(endDate) : null,
+      parsedTags
     );
 
     const filtered = items.filter(item => {
@@ -107,3 +107,5 @@ export async function exportPDF(req, res) {
     res.status(500).json({ error: 'Failed to export PDF' });
   }
 }
+
+module.exports = { exportCSV, exportPDF };

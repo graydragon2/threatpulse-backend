@@ -1,7 +1,5 @@
-// utils/rssParser.js
-
-import Parser from 'rss-parser';
-import { scoreThreat, extractTags } from './threatScorer.js';
+const Parser = require('rss-parser');
+const { scoreThreat, extractTags } = require('./threatScorer');
 
 const parser = new Parser();
 
@@ -11,21 +9,19 @@ const feeds = [
   { url: 'http://feeds.reuters.com/reuters/topNews', source: 'Reuters' },
 ];
 
-export async function parseRSS(keywords = [], sources = [], startDate = null, endDate = null, tags = []) {
+async function parseRSS(keywords = [], sources = [], startDate = null, endDate = null, tags = []) {
   let allItems = [];
 
   for (const feed of feeds) {
-    // Skip feed if source filtering is enabled and feed is not included
     if (sources.length && !sources.includes(feed.source)) continue;
 
     try {
       const parsed = await parser.parseURL(feed.url);
       const items = parsed.items.map(item => {
         const threatScore = scoreThreat(item);
-        const threatLevel = threatScore >= 70
-          ? 'high'
-          : threatScore >= 40
-          ? 'medium'
+        const threatLevel =
+          threatScore >= 70 ? 'high'
+          : threatScore >= 40 ? 'medium'
           : 'low';
 
         const itemTags = extractTags(item);
@@ -48,7 +44,6 @@ export async function parseRSS(keywords = [], sources = [], startDate = null, en
     }
   }
 
-  // Filter by keywords
   if (keywords.length) {
     allItems = allItems.filter(item =>
       keywords.some(kw =>
@@ -58,7 +53,6 @@ export async function parseRSS(keywords = [], sources = [], startDate = null, en
     );
   }
 
-  // Filter by date
   if (startDate || endDate) {
     allItems = allItems.filter(item => {
       const itemDate = new Date(item.pubDate);
@@ -68,7 +62,6 @@ export async function parseRSS(keywords = [], sources = [], startDate = null, en
     });
   }
 
-  // Filter by tags
   if (tags.length) {
     allItems = allItems.filter(item =>
       item.tags.some(tag => tags.includes(tag))
@@ -77,3 +70,5 @@ export async function parseRSS(keywords = [], sources = [], startDate = null, en
 
   return allItems;
 }
+
+module.exports = { parseRSS };
