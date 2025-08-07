@@ -1,8 +1,9 @@
-// utils/rssParser.js
 const Parser = require('rss-parser');
 const { scoreThreat, extractTags } = require('./threatScorer');
 
-const parser = new Parser();
+const parser = new Parser({
+  headers: { 'User-Agent': 'ThreatPulseBot/1.0' }
+});
 
 const feeds = [
   { url: 'https://rss.cnn.com/rss/cnn_latest.rss', source: 'CNN' },
@@ -18,49 +19,49 @@ const feeds = [
 ];
 
 async function parseRSS(keywords = [], sources = [], startDate = null, endDate = null) {
-  const allItems = [];
+  const results = [];
 
-  for (const feed of feeds) {
-    if (sources.length > 0 && !sources.includes(feed.source)) continue;
+  const selectedFeeds = sources.length
+    ? feeds.filter(f => sources.includes(f.source))
+    : feeds;
 
+  for (const feed of selectedFeeds) {
     try {
-      const res = await parser.parseURL(feed.url);
-      const items = res.items || [];
+      const parsed = await parser.parseURL(feed.url);
 
-      for (const item of items) {
-        const pubDate = new Date(item.pubDate || item.isoDate || Date.now());
+      for (const item of parsed.items || []) {
+        const title = item.title || '';
+        const snippet = item.contentSnippet || '';
+        const pubDate = new Date(item.pubDate || item.isoDate || new Date());
+
         if (startDate && pubDate < startDate) continue;
         if (endDate && pubDate > endDate) continue;
 
-        const content = (item.title || '') + ' ' + (item.contentSnippet || '') + ' ' + (item.content || '');
-        if (
-          keywords.length > 0 &&
-          !keywords.some(kw => content.toLowerCase().includes(kw.toLowerCase()))
-        )
-          continue;
+        const content = `${title} ${snippet}`.toLowerCase();
+        const matchesKeyword = !keywords.length || keywords.some(k => content.includes(k.toLowerCase()));
 
-        const scored = {
-          ...item,
-          pubDate: pubDate.toISOString(),
+        if (!matchesKeyword) continue;
+
+        const score = scoreThreat(item);
+        const tags = extractTags(item);
+
+        results.push({
+          title: item.title,
+          link: item.link,
           source: feed.source,
-          threatScore: scoreThreat(item),
-          threatLevel:
-            scoreThreat(item) >= 70
-              ? 'high'
-              : scoreThreat(item) >= 40
-              ? 'medium'
-              : 'low',
-          tags: extractTags(item)
-        };
-
-        allItems.push(scored);
+          pubDate: pubDate.toISOString(),
+          contentSnippet: item.contentSnippet,
+          threatScore: score,
+          threatLevel: score >= 70 ? 'high' : score >= 40 ? 'medium' : 'low',
+          tags
+        });
       }
     } catch (err) {
-      console.error(`Error fetching feed ${feed.url}:`, err.message);
+      console.error(`Error fetching feed ${feed.url}: ${err.message}`);
     }
   }
 
-  return allItems;
+  return results;
 }
 
 module.exports = { parseRSS };
