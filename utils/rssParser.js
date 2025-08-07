@@ -1,7 +1,6 @@
 // utils/rssParser.js
-
-import Parser from 'rss-parser';
-import { scoreThreat, extractTags } from './threatScorer.js';
+const Parser = require('rss-parser');
+const { scoreThreat, extractTags } = require('./threatScorer');
 
 const parser = new Parser();
 
@@ -18,69 +17,50 @@ const feeds = [
   { url: 'https://www.emsc-csem.org/service/rss/rss.php', source: 'EMSC Earthquakes' }
 ];
 
-export async function parseRSS(keywords = [], sources = [], startDate = null, endDate = null, tags = []) {
-  let allItems = [];
+async function parseRSS(keywords = [], sources = [], startDate = null, endDate = null) {
+  const allItems = [];
 
   for (const feed of feeds) {
-    // Skip feed if source filtering is enabled and feed is not included
-    if (sources.length && !sources.includes(feed.source)) continue;
+    if (sources.length > 0 && !sources.includes(feed.source)) continue;
 
     try {
-      const parsed = await parser.parseURL(feed.url);
-      const items = parsed.items.map(item => {
-        const threatScore = scoreThreat(item);
-        const threatLevel = threatScore >= 70
-          ? 'high'
-          : threatScore >= 40
-          ? 'medium'
-          : 'low';
+      const res = await parser.parseURL(feed.url);
+      const items = res.items || [];
 
-        const itemTags = extractTags(item);
+      for (const item of items) {
+        const pubDate = new Date(item.pubDate || item.isoDate || Date.now());
+        if (startDate && pubDate < startDate) continue;
+        if (endDate && pubDate > endDate) continue;
 
-        return {
-          title: item.title,
-          link: item.link,
-          pubDate: item.pubDate,
+        const content = (item.title || '') + ' ' + (item.contentSnippet || '') + ' ' + (item.content || '');
+        if (
+          keywords.length > 0 &&
+          !keywords.some(kw => content.toLowerCase().includes(kw.toLowerCase()))
+        )
+          continue;
+
+        const scored = {
+          ...item,
+          pubDate: pubDate.toISOString(),
           source: feed.source,
-          contentSnippet: item.contentSnippet,
-          threatScore,
-          threatLevel,
-          tags: itemTags,
+          threatScore: scoreThreat(item),
+          threatLevel:
+            scoreThreat(item) >= 70
+              ? 'high'
+              : scoreThreat(item) >= 40
+              ? 'medium'
+              : 'low',
+          tags: extractTags(item)
         };
-      });
 
-      allItems = allItems.concat(items);
+        allItems.push(scored);
+      }
     } catch (err) {
       console.error(`Error fetching feed ${feed.url}:`, err.message);
     }
   }
 
-  // Filter by keywords
-  if (keywords.length) {
-    allItems = allItems.filter(item =>
-      keywords.some(kw =>
-        item.title?.toLowerCase().includes(kw) ||
-        item.contentSnippet?.toLowerCase().includes(kw)
-      )
-    );
-  }
-
-  // Filter by date
-  if (startDate || endDate) {
-    allItems = allItems.filter(item => {
-      const itemDate = new Date(item.pubDate);
-      if (startDate && itemDate < startDate) return false;
-      if (endDate && itemDate > endDate) return false;
-      return true;
-    });
-  }
-
-  // Filter by tags
-  if (tags.length) {
-    allItems = allItems.filter(item =>
-      item.tags.some(tag => tags.includes(tag))
-    );
-  }
-
   return allItems;
 }
+
+module.exports = { parseRSS };
