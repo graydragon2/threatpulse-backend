@@ -6,7 +6,15 @@
 
 const Anthropic = require('@anthropic-ai/sdk');
 
-const client = new Anthropic(); // reads ANTHROPIC_API_KEY from env
+// Lazy singleton: the SDK throws at construction time if it can't resolve
+// credentials, so building it eagerly at module load would crash the whole
+// server on startup whenever ANTHROPIC_API_KEY isn't set — even though this
+// agent is only ever used on an opt-in ?compareAI=true request.
+let client;
+function getClient() {
+  if (!client) client = new Anthropic();
+  return client;
+}
 
 const MODEL = process.env.THREAT_AGENT_MODEL || 'claude-opus-5';
 const BATCH_SIZE = 20; // items per API call — keeps requests small and cacheable
@@ -57,7 +65,7 @@ async function scoreBatch(items) {
     .map((item, i) => `[${i}] ${item.title || ''}\n${item.contentSnippet || ''}`)
     .join('\n\n');
 
-  const response = await client.messages.create({
+  const response = await getClient().messages.create({
     model: MODEL,
     max_tokens: 4096,
     thinking: { type: 'disabled' }, // per-item triage doesn't need deep reasoning

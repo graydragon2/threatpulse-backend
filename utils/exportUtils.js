@@ -7,7 +7,23 @@ const { Parser } = require('json2csv');
 const PDFDocument = require('pdfkit');
 
 const EXPORTS_DIR = path.join(__dirname, '../data/exports');
-fs.mkdirSync(EXPORTS_DIR, { recursive: true });
+
+// Best-effort: persisting exports for later re-download is a nice-to-have,
+// not something that should ever take the export endpoint down. Created
+// lazily (not at module load) and any failure here just means the export
+// isn't saved to history — the client still gets their file.
+let exportsDirReady = false;
+function ensureExportsDir() {
+  if (exportsDirReady) return true;
+  try {
+    fs.mkdirSync(EXPORTS_DIR, { recursive: true });
+    exportsDirReady = true;
+    return true;
+  } catch (err) {
+    console.error('Could not create exports directory, exports will not be saved to history:', err);
+    return false;
+  }
+}
 
 function parseFilters(req) {
   const {
@@ -62,15 +78,20 @@ async function exportCSV(req, res) {
     const timestamp = new Date().toISOString().slice(0, 10);
     const filename = `threats_${timestamp}_${Date.now()}.csv`;
 
-    fs.writeFileSync(path.join(EXPORTS_DIR, filename), csv);
-
-    saveReportMetadata({
-      filename,
-      format: 'csv',
-      filters,
-      summary: summarize(filtered),
-      url: downloadUrl(req, filename)
-    });
+    if (ensureExportsDir()) {
+      try {
+        fs.writeFileSync(path.join(EXPORTS_DIR, filename), csv);
+        saveReportMetadata({
+          filename,
+          format: 'csv',
+          filters,
+          summary: summarize(filtered),
+          url: downloadUrl(req, filename)
+        });
+      } catch (err) {
+        console.error('Could not persist CSV export to history:', err);
+      }
+    }
 
     res.header('Content-Type', 'text/csv');
     res.attachment(filename);
@@ -93,20 +114,27 @@ async function exportPDF(req, res) {
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
 
-    // Stream to the response and to disk at the same time so the report can
-    // be re-downloaded later from /history without re-running the query.
+    // Stream to the response, and best-effort to disk at the same time so
+    // the report can be re-downloaded later from /history. If the exports
+    // directory isn't writable, the client still gets the PDF — it just
+    // won't show up in history.
     doc.pipe(res);
-    const fileStream = fs.createWriteStream(path.join(EXPORTS_DIR, filename));
-    doc.pipe(fileStream);
-    fileStream.on('finish', () => {
-      saveReportMetadata({
-        filename,
-        format: 'pdf',
-        filters,
-        summary: summarize(filtered),
-        url: downloadUrl(req, filename)
+    if (ensureExportsDir()) {
+      const fileStream = fs.createWriteStream(path.join(EXPORTS_DIR, filename));
+      fileStream.on('error', (err) => {
+        console.error('Could not persist PDF export to history:', err);
       });
-    });
+      doc.pipe(fileStream);
+      fileStream.on('finish', () => {
+        saveReportMetadata({
+          filename,
+          format: 'pdf',
+          filters,
+          summary: summarize(filtered),
+          url: downloadUrl(req, filename)
+        });
+      });
+    }
 
     doc.fontSize(16).text('ThreatPulse Threat Report', { align: 'center' });
     doc.moveDown();
