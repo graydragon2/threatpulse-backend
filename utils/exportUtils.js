@@ -1,8 +1,13 @@
+const fs = require('fs');
+const path = require('path');
 const { parseRSS } = require('./rssParser');
 const { filterThreats } = require('./filterThreats');
 const { saveReportMetadata } = require('./historyStorage');
 const { Parser } = require('json2csv');
 const PDFDocument = require('pdfkit');
+
+const EXPORTS_DIR = path.join(__dirname, '../data/exports');
+fs.mkdirSync(EXPORTS_DIR, { recursive: true });
 
 function parseFilters(req) {
   const {
@@ -29,6 +34,22 @@ async function getFilteredItems(filters) {
   return filterThreats(items, { riskLevel: filters.riskLevel, tags: filters.tags });
 }
 
+function summarize(items) {
+  return items.reduce(
+    (acc, item) => {
+      if (item.threatLevel === 'high') acc.high++;
+      else if (item.threatLevel === 'medium') acc.medium++;
+      else if (item.threatLevel === 'low') acc.low++;
+      return acc;
+    },
+    { high: 0, medium: 0, low: 0 }
+  );
+}
+
+function downloadUrl(req, filename) {
+  return `${req.protocol}://${req.get('host')}/downloads/${filename}`;
+}
+
 async function exportCSV(req, res) {
   try {
     const filters = parseFilters(req);
@@ -39,9 +60,17 @@ async function exportCSV(req, res) {
     const csv = parser.parse(filtered);
 
     const timestamp = new Date().toISOString().slice(0, 10);
-    const filename = `threats_${timestamp}.csv`;
+    const filename = `threats_${timestamp}_${Date.now()}.csv`;
 
-    saveReportMetadata({ filename, format: 'csv', filters });
+    fs.writeFileSync(path.join(EXPORTS_DIR, filename), csv);
+
+    saveReportMetadata({
+      filename,
+      format: 'csv',
+      filters,
+      summary: summarize(filtered),
+      url: downloadUrl(req, filename)
+    });
 
     res.header('Content-Type', 'text/csv');
     res.attachment(filename);
@@ -59,14 +88,26 @@ async function exportPDF(req, res) {
 
     const doc = new PDFDocument();
     const timestamp = new Date().toISOString().slice(0, 10);
-    const filename = `threats_${timestamp}.pdf`;
-
-    saveReportMetadata({ filename, format: 'pdf', filters });
+    const filename = `threats_${timestamp}_${Date.now()}.pdf`;
 
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
 
+    // Stream to the response and to disk at the same time so the report can
+    // be re-downloaded later from /history without re-running the query.
     doc.pipe(res);
+    const fileStream = fs.createWriteStream(path.join(EXPORTS_DIR, filename));
+    doc.pipe(fileStream);
+    fileStream.on('finish', () => {
+      saveReportMetadata({
+        filename,
+        format: 'pdf',
+        filters,
+        summary: summarize(filtered),
+        url: downloadUrl(req, filename)
+      });
+    });
+
     doc.fontSize(16).text('ThreatPulse Threat Report', { align: 'center' });
     doc.moveDown();
 

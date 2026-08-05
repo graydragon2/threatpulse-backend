@@ -27,13 +27,15 @@ function writeHistory(entries) {
   fs.writeFileSync(historyFilePath, JSON.stringify(entries, null, 2));
 }
 
-function saveReportMetadata({ filename, format, filters }) {
+function saveReportMetadata({ filename, format, filters, summary, url }) {
   const entry = {
     id: crypto.randomUUID(),
     filename,
     format,
     date: new Date().toISOString(),
-    filters
+    filters,
+    summary,
+    url
   };
 
   const history = readHistory();

@@ -4,6 +4,7 @@ const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
 const dotenv = require('dotenv');
+const path = require('path');
 const rssRoutes = require('./routes/rss');
 const exportRoutes = require('./routes/export');
 const historyRoutes = require('./routes/history');
@@ -17,6 +18,9 @@ app.use(cors());
 app.use(morgan('dev'));
 app.use(express.json());
 app.use('/history', historyRoutes);
+
+// Serve previously generated exports so saved reports can be re-downloaded
+app.use('/downloads', express.static(path.join(__dirname, 'data/exports')));
 
 // API Routes
 app.use('/export', exportRoutes);
