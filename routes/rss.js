@@ -1,9 +1,16 @@
 const express = require('express');
-const { parseRSS } = require('../utils/rssParser');
+const { parseRSS, getAvailableSources } = require('../utils/rssParser');
 const { scoreThreatsWithAI } = require('../utils/threatAgent');
 const { filterThreats } = require('../utils/filterThreats');
 
 const router = express.Router();
+
+// So the frontend's source-filter checkboxes can stay in sync with the
+// actual feed list instead of hardcoding it (which is exactly how it went
+// stale last time feeds were added here).
+router.get('/sources', (req, res) => {
+  res.json({ sources: getAvailableSources() });
+});
 
 router.get('/', async (req, res) => {
   try {

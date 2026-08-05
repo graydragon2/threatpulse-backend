@@ -107,4 +107,8 @@ async function parseRSS(keywords = [], sources = [], startDate = null, endDate =
   return results;
 }
 
-module.exports = { parseRSS };
+function getAvailableSources() {
+  return feeds.map(f => f.source);
+}
+
+module.exports = { parseRSS, getAvailableSources };
