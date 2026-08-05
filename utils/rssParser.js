@@ -1,9 +1,15 @@
 const Parser = require('rss-parser');
+const NodeCache = require('node-cache');
 const { scoreThreat, extractTags } = require('./threatScorer');
 
 const parser = new Parser({
   headers: { 'User-Agent': 'ThreatPulseBot/1.0' }
 });
+
+// Feeds are fetched live on every call; cache the scored result per unique
+// keyword/source/date-range combination so repeated requests (e.g. a
+// frontend polling /rss) don't re-fetch all feeds every time.
+const cache = new NodeCache({ stdTTL: 300 }); // 5 minutes
 
 const feeds = [
   { url: 'https://rss.cnn.com/rss/cnn_latest.rss', source: 'CNN' },
@@ -19,6 +25,16 @@ const feeds = [
 ];
 
 async function parseRSS(keywords = [], sources = [], startDate = null, endDate = null) {
+  const cacheKey = JSON.stringify({
+    keywords: [...keywords].sort(),
+    sources: [...sources].sort(),
+    startDate: startDate ? startDate.toISOString() : null,
+    endDate: endDate ? endDate.toISOString() : null
+  });
+
+  const cached = cache.get(cacheKey);
+  if (cached) return cached;
+
   const results = [];
 
   const selectedFeeds = sources.length
@@ -61,6 +77,7 @@ async function parseRSS(keywords = [], sources = [], startDate = null, endDate =
     }
   }
 
+  cache.set(cacheKey, results);
   return results;
 }
 

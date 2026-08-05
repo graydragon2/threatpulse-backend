@@ -1,6 +1,7 @@
 const express = require('express');
 const { parseRSS } = require('../utils/rssParser');
 const { scoreThreatsWithAI } = require('../utils/threatAgent');
+const { filterThreats } = require('../utils/filterThreats');
 
 const router = express.Router();
 
@@ -22,10 +23,8 @@ router.get('/', async (req, res) => {
     const start = startDate ? new Date(startDate) : null;
     const end = endDate ? new Date(endDate) : null;
 
-    const allItems = await parseRSS(keywordList, sourceList, start, end, tagList);
-    let filtered = riskLevel
-      ? allItems.filter(item => item.threatLevel === riskLevel)
-      : allItems;
+    const allItems = await parseRSS(keywordList, sourceList, start, end);
+    let filtered = filterThreats(allItems, { riskLevel, tags: tagList });
 
     // ?compareAI=true annotates each item with an LLM-scored aiScore/aiLevel/
     // aiTags/aiRationale alongside the keyword-based threatScore/threatLevel,
