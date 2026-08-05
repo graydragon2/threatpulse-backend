@@ -1,0 +1,13 @@
+# Nixpacks' auto-detection has been misidentifying this repo as a Deno
+# project — it walks into node_modules/@streamparser/json (a transitive
+# dependency of @anthropic-ai/sdk that explicitly supports Deno) and picks
+# that package's file as the app's entry point instead of running the
+# actual Node server. Pin the provider and commands explicitly so build
+# behavior doesn't depend on that detection succeeding.
+providers = ["node"]
+
+[phases.install]
+cmds = ["npm ci"]
+
+[start]
+cmd = "node server.js"
