@@ -1,6 +1,6 @@
 # ThreatPulse Backend
 
-Express API that aggregates cybersecurity RSS feeds (CISA, BBC, CNN, and others — see `utils/rssParser.js`), scores/filters them by keyword and risk level, and optionally re-scores them with an LLM-based triage agent. Paired with [threatpulse-frontend](https://github.com/graydragon2/threatpulse-frontend).
+Express API that aggregates RSS feeds — mainstream news, cybersecurity specialist outlets, defense/geopolitical analysis, and disaster/crisis alerts (see the categorized list in `utils/rssParser.js`) — scores/filters them by keyword and risk level, and optionally re-scores them with an LLM-based triage agent. Paired with [threatpulse-frontend](https://github.com/graydragon2/threatpulse-frontend).
 
 ## Setup
 
