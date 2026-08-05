@@ -4,7 +4,7 @@ const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
 const dotenv = require('dotenv');
-const { parseRSS } = require('./utils/rssParser');
+const path = require('path');
 const rssRoutes = require('./routes/rss');
 const exportRoutes = require('./routes/export');
 const historyRoutes = require('./routes/history');
@@ -19,42 +19,16 @@ app.use(morgan('dev'));
 app.use(express.json());
 app.use('/history', historyRoutes);
 
+// Serve previously generated exports so saved reports can be re-downloaded
+app.use('/downloads', express.static(path.join(__dirname, 'data/exports')));
+
 // API Routes
 app.use('/export', exportRoutes);
+app.use('/rss', rssRoutes);
 
 // Health Check
 app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
-});
-
-// Main RSS route
-app.get('/rss', async (req, res) => {
-  try {
-    const {
-      keywords = '',
-      sources = [],
-      startDate,
-      endDate,
-      riskLevel = ''
-    } = req.query;
-
-    const keywordList = keywords.split(',').map(k => k.trim()).filter(Boolean);
-    const sourceList = [].concat(sources); // normalize single/multi
-
-    const start = startDate ? new Date(startDate) : null;
-    const end = endDate ? new Date(endDate) : null;
-
-    const allItems = await parseRSS(keywordList, sourceList, start, end);
-
-    const items = riskLevel
-      ? allItems.filter(item => item.threatLevel === riskLevel)
-      : allItems;
-
-    res.json({ success: true, items, total: items.length });
-  } catch (error) {
-    console.error('RSS fetch error:', error);
-    res.status(500).json({ success: false, error: 'Failed to fetch RSS feeds' });
-  }
 });
 
 // Dynamic port for Railway/Vercel

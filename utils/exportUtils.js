@@ -1,41 +1,79 @@
+const fs = require('fs');
+const path = require('path');
 const { parseRSS } = require('./rssParser');
+const { filterThreats } = require('./filterThreats');
+const { saveReportMetadata } = require('./historyStorage');
 const { Parser } = require('json2csv');
 const PDFDocument = require('pdfkit');
 
+const EXPORTS_DIR = path.join(__dirname, '../data/exports');
+fs.mkdirSync(EXPORTS_DIR, { recursive: true });
+
+function parseFilters(req) {
+  const {
+    keywords = '',
+    sources = [],
+    riskLevel = '',
+    startDate,
+    endDate,
+    tags = ''
+  } = req.query;
+
+  return {
+    keywords: keywords.split(',').map(k => k.trim()).filter(Boolean),
+    sources: [].concat(sources),
+    riskLevel,
+    startDate: startDate ? new Date(startDate) : null,
+    endDate: endDate ? new Date(endDate) : null,
+    tags: tags.split(',').map(tag => tag.trim()).filter(Boolean)
+  };
+}
+
+async function getFilteredItems(filters) {
+  const items = await parseRSS(filters.keywords, filters.sources, filters.startDate, filters.endDate);
+  return filterThreats(items, { riskLevel: filters.riskLevel, tags: filters.tags });
+}
+
+function summarize(items) {
+  return items.reduce(
+    (acc, item) => {
+      if (item.threatLevel === 'high') acc.high++;
+      else if (item.threatLevel === 'medium') acc.medium++;
+      else if (item.threatLevel === 'low') acc.low++;
+      return acc;
+    },
+    { high: 0, medium: 0, low: 0 }
+  );
+}
+
+function downloadUrl(req, filename) {
+  return `${req.protocol}://${req.get('host')}/downloads/${filename}`;
+}
+
 async function exportCSV(req, res) {
   try {
-    const {
-      keywords = '',
-      sources = [],
-      riskLevel = '',
-      startDate,
-      endDate,
-      tags = ''
-    } = req.query;
-
-    const parsedTags = tags.split(',').map(tag => tag.trim()).filter(Boolean);
-
-    const items = await parseRSS(
-      keywords.split(',').filter(Boolean),
-      [].concat(sources),
-      startDate ? new Date(startDate) : null,
-      endDate ? new Date(endDate) : null,
-      parsedTags
-    );
-
-    const filtered = items.filter(item => {
-      const matchesRisk = riskLevel ? item.threatLevel === riskLevel : true;
-      const matchesTags = parsedTags.length > 0 ? parsedTags.some(tag => item.tags?.includes(tag)) : true;
-      return matchesRisk && matchesTags;
-    });
+    const filters = parseFilters(req);
+    const filtered = await getFilteredItems(filters);
 
     const fields = ['title', 'pubDate', 'source', 'threatLevel', 'tags', 'link'];
     const parser = new Parser({ fields });
     const csv = parser.parse(filtered);
 
     const timestamp = new Date().toISOString().slice(0, 10);
+    const filename = `threats_${timestamp}_${Date.now()}.csv`;
+
+    fs.writeFileSync(path.join(EXPORTS_DIR, filename), csv);
+
+    saveReportMetadata({
+      filename,
+      format: 'csv',
+      filters,
+      summary: summarize(filtered),
+      url: downloadUrl(req, filename)
+    });
+
     res.header('Content-Type', 'text/csv');
-    res.attachment(`threats_${timestamp}.csv`);
+    res.attachment(filename);
     res.send(csv);
   } catch (err) {
     console.error('CSV export error:', err);
@@ -45,38 +83,31 @@ async function exportCSV(req, res) {
 
 async function exportPDF(req, res) {
   try {
-    const {
-      keywords = '',
-      sources = [],
-      riskLevel = '',
-      startDate,
-      endDate,
-      tags = ''
-    } = req.query;
-
-    const parsedTags = tags.split(',').map(tag => tag.trim()).filter(Boolean);
-
-    const items = await parseRSS(
-      keywords.split(',').filter(Boolean),
-      [].concat(sources),
-      startDate ? new Date(startDate) : null,
-      endDate ? new Date(endDate) : null,
-      parsedTags
-    );
-
-    const filtered = items.filter(item => {
-      const matchesRisk = riskLevel ? item.threatLevel === riskLevel : true;
-      const matchesTags = parsedTags.length > 0 ? parsedTags.some(tag => item.tags?.includes(tag)) : true;
-      return matchesRisk && matchesTags;
-    });
+    const filters = parseFilters(req);
+    const filtered = await getFilteredItems(filters);
 
     const doc = new PDFDocument();
     const timestamp = new Date().toISOString().slice(0, 10);
+    const filename = `threats_${timestamp}_${Date.now()}.pdf`;
 
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="threats_${timestamp}.pdf"`);
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
 
+    // Stream to the response and to disk at the same time so the report can
+    // be re-downloaded later from /history without re-running the query.
     doc.pipe(res);
+    const fileStream = fs.createWriteStream(path.join(EXPORTS_DIR, filename));
+    doc.pipe(fileStream);
+    fileStream.on('finish', () => {
+      saveReportMetadata({
+        filename,
+        format: 'pdf',
+        filters,
+        summary: summarize(filtered),
+        url: downloadUrl(req, filename)
+      });
+    });
+
     doc.fontSize(16).text('ThreatPulse Threat Report', { align: 'center' });
     doc.moveDown();
 

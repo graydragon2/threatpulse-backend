@@ -1,25 +1,55 @@
-const { v4: uuidv4 } = require('uuid');
+// utils/historyStorage.js
+//
+// Persists export history to data/savedReports.json. Previously this kept
+// an in-memory array that nothing ever wrote to, while routes/history.js
+// read the JSON file directly — two disconnected "history" systems. This
+// is now the single source of truth; routes/history.js and exportUtils.js
+// both go through it.
 
-// Temporary in-memory storage (replace with file/db as needed)
-const history = [];
+const fs = require('fs');
+const path = require('path');
+const crypto = require('crypto');
 
-function saveReportMetadata({ filename, format, filters }) {
+const historyFilePath = path.join(__dirname, '../data/savedReports.json');
+
+function readHistory() {
+  try {
+    const raw = fs.readFileSync(historyFilePath, 'utf-8');
+    return JSON.parse(raw);
+  } catch (err) {
+    if (err.code === 'ENOENT') return [];
+    console.error('Failed to read history file:', err);
+    return [];
+  }
+}
+
+function writeHistory(entries) {
+  fs.writeFileSync(historyFilePath, JSON.stringify(entries, null, 2));
+}
+
+function saveReportMetadata({ filename, format, filters, summary, url }) {
   const entry = {
-    id: uuidv4(),
+    id: crypto.randomUUID(),
     filename,
     format,
     date: new Date().toISOString(),
     filters,
+    summary,
+    url
   };
+
+  const history = readHistory();
   history.push(entry);
+  writeHistory(history);
+
   return entry;
 }
 
 function getReportHistory() {
-  return history;
+  return readHistory();
 }
 
 module.exports = {
   saveReportMetadata,
-  getReportHistory,
+  getReportHistory
 };
