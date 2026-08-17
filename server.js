@@ -8,6 +8,7 @@ const path = require('path');
 const rssRoutes = require('./routes/rss');
 const exportRoutes = require('./routes/export');
 const historyRoutes = require('./routes/history');
+const buyAnalyzerRoutes = require('./routes/buyAnalyzer');
 
 dotenv.config();
 
@@ -25,6 +26,7 @@ app.use('/downloads', express.static(path.join(__dirname, 'data/exports')));
 // API Routes
 app.use('/export', exportRoutes);
 app.use('/rss', rssRoutes);
+app.use('/buy-analyzer', buyAnalyzerRoutes);
 
 // Health Check
 app.get('/health', (req, res) => {
